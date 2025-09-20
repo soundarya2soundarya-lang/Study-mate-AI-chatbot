@@ -1,0 +1,277 @@
+// server.js (ES module)
+import express from "express";
+import cors from "cors";
+import multer from "multer";
+import fs from "fs/promises";
+import pdfParse from "pdf-parse";
+import dotenv from "dotenv";
+import OpenAI from "openai";
+import path from "path";
+
+dotenv.config();
+const app = express();
+app.use(cors());
+app.use(express.json({ limit: "5mb" }));
+
+const PORT = process.env.PORT || 4000;
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// simple storage for demo (in-memory + disk backup)
+const VECTOR_FILE = path.join(process.cwd(), "vectors.json");
+let vectorStore = []; // { id, text, embedding (Array<number>) }
+
+// load any saved vectors on start
+async function loadVectors() {
+  try {
+    const raw = await fs.readFile(VECTOR_FILE, "utf8");
+    vectorStore = JSON.parse(raw);
+    console.log("Loaded vectors:", vectorStore.length);
+  } catch (e) {
+    vectorStore = [];
+  }
+}
+async function saveVectors() {
+  await fs.writeFile(VECTOR_FILE, JSON.stringify(vectorStore, null, 2));
+}
+
+// helpers
+function chunkText(text, maxChars = 1000) {
+  // naive split: preserve paragraph boundaries then slice
+  const paras = text.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  const chunks = [];
+  for (const p of paras) {
+    if (p.length <= maxChars) {
+      if (chunks.length && (chunks[chunks.length - 1].length + p.length + 20) <= maxChars) {
+        chunks[chunks.length - 1] += "\n\n" + p;
+      } else {
+        chunks.push(p);
+      }
+    } else {
+      // long paragraph -> slice
+      for (let i = 0; i < p.length; i += maxChars) {
+        chunks.push(p.slice(i, i + maxChars));
+      }
+    }
+  }
+  return chunks;
+}
+function cosine(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    na += a[i] * a[i];
+    nb += b[i] * b[i];
+  }
+  if (na === 0 || nb === 0) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// multer for file uploads
+const upload = multer({ dest: "uploads/" });
+
+// upload endpoint: accept PDF, extract text, create embeddings
+app.post("/api/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file sent (field name 'file')" });
+
+    const data = await fs.readFile(req.file.path);
+    const pdf = await pdfParse(data);
+    const text = (pdf && pdf.text) ? pdf.text : "";
+    if (!text) return res.status(400).json({ error: "No extractable text from PDF" });
+
+    // chunk
+    const chunks = chunkText(text, 1000);
+    const created = [];
+    for (const c of chunks) {
+      // create embedding
+      const embResp = await openai.embeddings.create({
+        model: "text-embedding-3-small", // recommended small model
+        input: c
+      });
+      const embedding = embResp.data[0].embedding;
+      const id = ${Date.now()}-${Math.random().toString(16).slice(2,8)};
+      vectorStore.push({ id, text: c, embedding });
+      created.push({ id, len: c.length });
+    }
+
+    await saveVectors();
+    // cleanup uploaded file
+    await fs.unlink(req.file.path).catch(()=>{});
+    return res.json({ status: "ok", chunks: created.length, sample: created.slice(0,3) });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// query endpoint: retrieve top-k chunks by embedding and call chat completion
+app.post("/api/query", async (req, res) => {
+  try {
+    const { question, top_k = 4 } = req.body;
+    if (!question) return res.status(400).json({ error: "question required" });
+
+    const qEmbResp = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question
+    });
+    const qEmb = qEmbResp.data[0].embedding;
+
+    // score vectors
+    const scored = vectorStore.map(v => ({ ...v, score: cosine(qEmb, v.embedding) }));
+    scored.sort((a,b) => b.score - a.score);
+    const top = scored.slice(0, top_k);
+
+    const contextText = top.map((t,i)=>[chunk ${i+1}, score=${t.score.toFixed(3)}]\n${t.text}).join("\n\n---\n\n");
+
+    // build prompt for the LLM (RAG)
+    const prompt = `You are a helpful study assistant. Use the following extracted document excerpts (do not make up facts not present below). Use them to answer the user question concisely and include citations to chunk numbers when relevant.
+
+Context excerpts:
+${contextText}
+
+User question:
+${question}
+
+Answer in a short helpful way. If the answer is not in the excerpts, say "I couldn't find the answer in the uploaded documents."`;
+
+    // chat completion
+    const chatResp = await openai.chat.completions.create({
+      model: "gpt-4o-mini", // cost-efficient chat model; change if you have access to gpt-4
+      messages: [
+        { role: "system", content: "You are a helpful study assistant trained to answer using provided document excerpts." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 600
+    });
+
+    const answer = chatResp.choices?.[0]?.message?.content ?? "No answer";
+    return res.json({ answer, retrieved: top.map(t=>({ id: t.id, score: t.score })) });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// generate quiz from top-k context (returns JSON)
+app.post("/api/generate-quiz", async (req, res) => {
+  try {
+    const { question, top_k = 4, n_questions = 5 } = req.body;
+    if (!question) return res.status(400).json({ error: "question required" });
+
+    // reuse retrieval
+    const qEmbResp = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question
+    });
+    const qEmb = qEmbResp.data[0].embedding;
+    const scored = vectorStore.map(v => ({ ...v, score: cosine(qEmb, v.embedding) }));
+    scored.sort((a,b)=>b.score-b.score);
+    const top = scored.slice(0, top_k);
+    const ctx = top.map((t,i)=>[chunk ${i+1}]\n${t.text}).join("\n\n---\n\n");
+
+    const prompt = `Using the following context, create ${n_questions} multiple-choice questions (4 options each) and mark the correct option.
+Context:
+${ctx}
+
+Output JSON like:
+[
+  { "q": "question text", "options": ["A","B","C","D"], "answer": 1, "explain": "short explanation" },
+  ...
+]`;
+
+    const chatResp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a quiz generator. Output valid JSON exactly as requested." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 800
+    });
+    const raw = chatResp.choices?.[0]?.message?.content ?? "";
+    // try to parse JSON (model might output markdown; we'll extract JSON block)
+    const jsonMatch = raw.match(/(\[.*\])/s);
+    const parsed = jsonMatch ? JSON.parse(jsonMatch[1]) : raw;
+    return res.json({ quiz: parsed });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// generate mermaid mindmap from top-k context
+app.post("/api/generate-mindmap", async (req, res) => {
+  try {
+    const { question, top_k = 4 } = req.body;
+    if (!question) return res.status(400).json({ error: "question required" });
+
+    const qEmbResp = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: question
+    });
+    const qEmb = qEmbResp.data[0].embedding;
+    const scored = vectorStore.map(v => ({ ...v, score: cosine(qEmb, v.embedding) }));
+    scored.sort((a,b)=>b.score-b.score);
+    const top = scored.slice(0, top_k);
+    const ctx = top.map((t,i)=>[chunk ${i+1}]\n${t.text}).join("\n\n---\n\n");
+
+    const prompt = `Using the context below, create a MERMAID mindmap (text in mermaid 'mindmap' syntax) that summarizes core concepts and subtopics. Output only the mermaid code block (no explanation).
+Context:
+${ctx}
+
+Example mermaid mindmap format:
+graph TB
+  A[Root] --> B[Sub1]
+  A --> C[Sub2]
+`;
+
+    const chatResp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are an assistant that outputs mermaid mindmap code." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 500
+    });
+
+    const mermaid = chatResp.choices?.[0]?.message?.content ?? "";
+    return res.json({ mermaid });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+// generate exam schedule / timetable
+app.post("/api/schedule", async (req, res) => {
+  try {
+    const { subjects, daysAvailable, hoursPerDay=4 } = req.body;
+    if (!subjects || !Array.isArray(subjects)) return res.status(400).json({ error: "subjects array required" });
+
+    const prompt = `Create a study timetable for exam revision.
+Subjects: ${subjects.join(", ")}
+Days available: ${daysAvailable}
+Hours per day: ${hoursPerDay}
+Output a JSON array with each day: { "date": "YYYY-MM-DD", "slots": [{ "time": "09:00-11:00", "subject":"..." }, ...] }.
+Prioritize weaker subjects first. Keep slots of ~2 hours.`;
+
+    const chatResp = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a schedule planner. Output valid JSON only." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 400
+    });
+
+    const raw = chatResp.choices?.[0]?.message?.content ?? "";
+    const match = raw.match(/(\[.*\])/s);
+    const parsed = match ? JSON.parse(match[1]) : raw;
+    return res.json({ schedule: parsed });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: err.message || String(err) });
+  }
+});
+
+await loadVectors();
+app.listen(PORT, () => console.log(Server running on http://localhost:${PORT}));

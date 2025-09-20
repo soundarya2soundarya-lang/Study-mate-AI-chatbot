@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StudyMate: AI-Powered PDF Q&A</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --primary-light: #a29bfe;
+            --secondary: #fd79a8;
+            --accent: #00b894;
+            --warning: #fdcb6e;
+            --danger: #d63031;
+            --dark: #2d3436;
+            --darker: #1e272e;
+            --light: #f5f6fa;
+            --gray: #dfe6e9;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            --gradient: linear-gradient(135deg, #6c5ce7, #00b894);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: var(--gradient);
+            color: var(--darker);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            gap: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+            height: calc(100vh - 40px);
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            overflow-y: auto;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Left Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid rgba(108, 92, 231, 0.2);
+        }
+
+        .logo h1 {
+            font-size: 1.6rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            margin-top: 10px;
+        }
+
+        .logo img {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 5px 10px rgba(108, 92, 231, 0.3));
+        }
+
+        .category-selector {
+            margin-bottom: 25px;
+        }
+
+        .category-btn {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: none;
+            border-radius: 15px;
+            background: var(--light);
+            color: var(--dark);
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .category-btn.active {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(108, 92, 231, 0.3);
+        }
+
+        .category-btn:hover {
+            transform: translateX(8px);
+        }
+
+        .upload-section {
+            background: var(--light);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .upload-section h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .upload-area {
+            border: 3px dashed var(--primary-light);
+            border-radius: 15px;
+            padding: 35px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(108, 92, 231, 0.08);
+            transform: translateY(-3px);
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        .upload-area p {
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .import-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .import-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: white;
+            color: var(--dark);
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .import-btn:hover {
+            background: var(--primary-light);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .quick-actions {
+            margin-top: 25px;
+        }
+
+        .quick-actions h3 {
+            color: var(--primary);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: none;
+            border-radius: 15px;
+            background: white;
+            color: var(--dark);
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .action-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateX(8px);
+        }
+
+        /* Center Panel */
+        .center-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .question-display {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .question-display h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .question-text {
+            font-size: 1.3rem;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--light);
+            border-radius: 15px;
+            line-height: 1.7;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .answer-section {
+            margin-top: 25px;
+        }
+
+        .answer-text {
+            min-height: 200px;
+            padding: 20px;
+            border: 2px solid var(--gray);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            line-height: 1.7;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .answer-text:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 5px 15px rgba(108, 92, 231, 0.2);
+        }
+
+        .answer-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 18px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: var(--dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-info {
+            background: var(--primary-light);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+        }
+
+        .study-tools {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .study-tools h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .tool-btn {
+            padding: 20px;
+            border: none;
+            border-radius: 15px;
+            background: white;
+            color: var(--dark);
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .tool-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(108, 92, 231, 0.25);
+        }
+
+        .tool-btn i {
+            font-size: 2.2rem;
+        }
+
+        .study-goals {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+        }
+
+        .study-goals h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .goal-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--light);
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .goal-item i {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        .progress-container {
+            flex: 1;
+        }
+
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: var(--gray);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 5px;
+            transition: width 1s ease;
+        }
+
+        .motivation {
+            text-align: center;
+            padding: 20px;
+            background: var(--gradient);
+            border-radius: 15px;
+            color: white;
+            margin-top: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .motivation i {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .motivation p {
+            margin-bottom: 5px;
+            font-style: italic;
+        }
+
+        /* Right Sidebar - Chatbot */
+        .chatbot-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background: var(--gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header img {
+            width: 32px;
+            height: 32px;
+            filter: brightness(0) invert(1);
+        }
+
+        .chat-header h2 {
+            font-weight: 600;
+            font-size: 1.3rem;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--light);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 18px;
+            max-width: 85%;
+            line-height: 1.6;
+            position: relative;
+            animation: fadeIn 0.4s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-message {
+            background: white;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .user-message {
+            background: var(--primary);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message b {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        .chat-input {
+            display: flex;
+            padding: 20px;
+            background: white;
+            border-top: 2px solid var(--light);
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 15px;
+            border: 2px solid var(--gray);
+            border-radius: 12px;
+            outline: none;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input input:focus {
+            border-color: var(--primary);
+        }
+
+        .chat-input button {
+            margin-left: 12px;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input button:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        /* Animations */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .container {
+                grid-template-columns: 280px 1fr 320px;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+            .sidebar {
+                grid-column: 1 / 3;
+                order: 3;
+            }
+            .chatbot-panel {
+                grid-column: 1 / 3;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                grid-column: 1;
+            }
+            .chatbot-panel {
+                grid-column: 1;
+            }
+            .tools-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+            .answer-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Left Sidebar -->
+        <div class="panel sidebar">
+            <div class="logo">
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjNmM1Y2U3IiBkPSJNMjU2IDhDMTE5IDggOCAxMTkgOCAyNTZzMTExIDI0OCAyNDggMjQ4IDI0OC0xMTEgMjQ4LTI0OFMzOTMgOCAyNTYgOHptMCA0NDhjLTExMC41IDAtMjAwLTg5LjUtMjAwLTIwMFMxNDUuNSA1NiAyNTYgNTZzMjAwIDg5LjUgMjAwIDIwMC04OS41IDIwMC0yMDAgMjAweiIvPjxwYXRoIGZpbGw9IiNmZDc5YTgiIGQ9Ik0yNzIgMTM2aC0zMmMtNC40IDAtOCAzLjYtOCA4djM1MmMwIDQuNCAzLjYgOCA4IDhoMzJjNC40IDAgOC0zLjYgOC04VjE0NGMwLTQuNC0zLjYtOC04LTh6bTk2IDBoLTMyYy00LjQgMC04IDMuNi04IDh2MzUyYzAgNC40IDMuNiA4IDggOGgzMmM0LjQgMCA4LTMuNiA4LThWMTQ0YzAtNC40LTMuNi04LTgtOHoiLz48L3N2Zz4=" alt="StudyMate Logo">
+                <h1>StudyMate: AI-Powered PDF Q&A</h1>
+            </div>
+
+            <div class="category-selector">
+                <button class="category-btn active">
+                    <i class="fas fa-user-graduate"></i> Student
+                </button>
+                <button class="category-btn">
+                    <i class="fas fa-briefcase"></i> Business
+                </button>
+                <button class="category-btn">
+                    <i class="fas fa-star"></i> Other
+                </button>
+            </div>
+
+            <div class="upload-section">
+                <h3><i class="fas fa-cloud-upload-alt"></i> Upload PDF</h3>
+                <div class="upload-area" id="dropZone">
+                    <i class="fas fa-file-pdf"></i>
+                    <p>Drag & Drop your PDF here</p>
+                    <p>or</p>
+                    <button class="btn btn-primary" id="browseBtn">Browse Files</button>
+                </div>
+
+                <div class="import-options">
+                    <button class="import-btn" id="importGoogle">
+                        <i class="fab fa-google"></i> Google Drive
+                    </button>
+                    <button class="import-btn" id="importGit">
+                        <i class="fab fa-github"></i> GitHub
+                    </button>
+                    <button class="import-btn" id="importUrl">
+                        <i class="fas fa-link"></i> URL
+                    </button>
+                    <button class="import-btn" id="importOne">
+                        <i class="fas fa-database"></i> OneDrive
+                    </button>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                <button class="action-btn" id="keyConceptsBtn">
+                    <i class="fas fa-key"></i> Key Concepts
+                </button>
+                <button class="action-btn" id="examQuestionsBtn">
+                    <i class="fas fa-question-circle"></i> Potential Exam Questions
+                </button>
+                <button class="action-btn" id="summaryBtn">
+                    <i class="fas fa-file-alt"></i> Summary
+                </button>
+                <button class="action-btn" id="searchDocBtn">
+                    <i class="fas fa-search"></i> Search Document
+                </button>
+            </div>
+
+            <div class="study-goals">
+                <h3><i class="fas fa-trophy"></i> Study Goals</h3>
+                <div class="goal-item">
+                    <i class="fas fa-calendar-check"></i>
+                    <div class="progress-container">
+                        <div class="progress-text">
+                            <span>Daily Goal</span>
+                            <span>2/3 chapters</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 66%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="goal-item">
+                    <i class="fas fa-fire"></i>
+                    <div class="progress-container">
+                        <div class="progress-text">
+                            <span>Streak</span>
+                            <span>12 days</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 80%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="motivation">
+                    <i class="fas fa-quote-left"></i>
+                    <p>Learning is a treasure that will follow its owner everywhere.</p>
+                    <p>- Chinese Proverb</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel -->
+        <div class="panel center-panel">
+            <div class="question-display">
+                <h2><i class="fas fa-question-circle"></i> Your Question</h2>
+                <div class="question-text" id="staticQuestionText">
+                    What is the difference between supervised and unsupervised learning in machine learning?
+                </div>
+
+                <div class="answer-section">
+                    <h2><i class="fas fa-lightbulb"></i> AI Answer</h2>
+                    <div class="answer-text" id="answerText" contenteditable="true">
+                        Based on the uploaded materials, supervised learning and unsupervised learning are two main categories of machine learning algorithms.
+
+                        <strong>Supervised learning</strong> involves training a model on a labeled dataset, where the input data is paired with the correct output. The model learns to map inputs to outputs. Examples include classification and regression problems.
+
+                        <strong>Unsupervised learning</strong> involves training a model on unlabeled data, and the system tries to learn the patterns and structure from the data without explicit guidance. Examples include clustering and dimensionality reduction.
+
+                        The key difference is that supervised learning uses labeled data with known answers, while unsupervised learning finds hidden patterns in unlabeled data.
+                    </div>
+
+                    <div class="answer-actions">
+                        <button class="btn btn-primary" id="saveEdits">
+                            <i class="fas fa-save"></i> Save Edits
+                        </button>
+                        <button class="btn btn-secondary" id="downloadPdf">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button class="btn btn-secondary" id="downloadWord">
+                            <i class="fas fa-file-word"></i> Word
+                        </button>
+                        <button class="btn btn-secondary" id="downloadText">
+                            <i class="fas fa-file-alt"></i> Text
+                        </button>
+                        <button class="btn btn-warning" id="voiceoverBtn">
+                            <i class="fas fa-volume-up"></i> Voiceover
+                        </button>
+                        <button class="btn btn-danger" id="translateTelugu">
+                            <i class="fas fa-language"></i> Telugu
+                        </button>
+                        <button class="btn btn-danger" id="translateTamil">
+                            <i class="fas fa-language"></i> Tamil
+                        </button>
+                        <button class="btn btn-info" id="copyBtn">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="study-tools">
+                <h2><i class="fas fa-tools"></i> Study Tools</h2>
+                <div class="tools-grid">
+                    <button class="tool-btn" id="quizBtn">
+                        <i class="fas fa-tasks"></i> Quiz
+                    </button>
+                    <button class="tool-btn" id="flowBtn">
+                        <i class="fas fa-project-diagram"></i> Flowcharts
+                    </button>
+                    <button class="tool-btn" id="flashBtn">
+                        <i class="fas fa-sticky-note"></i> Flashcards
+                    </button>
+                    <button class="tool-btn" id="examBtn">
+                        <i class="fas fa-calendar"></i> Exam Scheduler
+                    </button>
+                    <button class="tool-btn" id="notesBtn">
+                        <i class="fas fa-book"></i> Notes
+                    </button>
+                    <button class="tool-btn" id="mindBtn">
+                        <i class="fas fa-brain"></i> Mind Maps
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Chatbot -->
+        <div class="panel chatbot-panel">
+            <div class="chat-header">
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmZmZmIiBkPSJNMjU2IDhDMTE5IDggOCAxMTkgOCAyNTZzMTExIDI0OCAyNDggMjQ4IDI0OC0xMTEgMjQ4LTI0OFMzOTMgOCAyNTYgOHptMCA0NDhjLTExMC41IDAtMjAwLTg5LjUtMjAwLTIwMFMxNDUuNSA1NiAyNTYgNTZzMjAwIDg5LjUgMjAwIDIwMC04OS41IDIwMC0yMDAgMjAweiIvPjxwYXRoIGZpbGw9IiNmZmZmZmYiIGQ9Ik0yNzIgMTM2aC0zMmMtNC40IDAtOCAzLjYtOCA4djM1MmMwIDQuNCAzLjYgOCA4IDhoMzJjNC40IDAgOC0zLjYgOC04VjE0NGMwLTQuNC0zLjYtOC04LTh6bTk2IDBoLTMyYy00LjQgMC04IDMuNi04IDh2MzUyYzAgNC40IDMuNiA4IDggOGgzMmM0LjQgMCA4LTMuNiA4LThWMTQ0YzAtNC40LTMuNi04LTgtOHoiLz48L3N2Zz4=" alt="StudyMate Logo">
+                <h2>Study Assistant</h2>
+            </div>
+            <div class="chat-box" id="chatBox">
+                <div class="message ai-message">
+                    <b>Study Assistant</b>
+                    Hello! I'm here to help clarify any questions you have about your study materials. How can I assist you today?
+                </div>
+            </div>
+            <div class="chat-input">
+                <input type="text" id="userInput" placeholder="Ask a question about your materials...">
+                <button id="sendMessageBtn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input used by browse button -->
+    <input type="file" id="hiddenFile" accept="application/pdf" style="display:none">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <script>
+    /* ============================
+       StudyMate — Script (fixed)
+       - integrates pdf.js extraction (all pages)
+       - sentence-aware chunking to avoid mid-sentence cuts
+       - retrieval over chunks with robust scoring
+       - hooks all buttons: downloads, voice, translate, copy, quiz
+       - saves edits to localStorage
+       ============================ */
+
+    // pdf.js worker
+    if(window['pdfjsLib']) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+    }
+
+    // App state
+    let docs = []; // array of {name, text}
+    let combinedText = '';
+    let currentMode = 'student'; // student, business, other
+
+    // DOM refs
+    const dropZone = document.getElementById('dropZone');
+    const browseBtn = document.getElementById('browseBtn');
+    const hiddenFile = document.getElementById('hiddenFile');
+    const chatBox = document.getElementById('chatBox');
+    const answerText = document.getElementById('answerText');
+    const staticQuestionText = document.getElementById('staticQuestionText');
+
+    // small stopword list (keeps scoring focused)
+    const STOPWORDS = new Set(['the','and','is','in','at','of','a','to','for','on','with','by','an','be','this','that','are','as','it','from','or','which','we']);
+
+    /* ------------------------
+       Utility: sentence splitter
+       Use regex to capture sentences including punctuation.
+       Falls back gracefully.
+       ------------------------ */
+    function splitIntoSentences(text) {
+      // Normalize whitespace
+      const t = text.replace(/\s+/g, ' ').trim();
+      if (!t) return [];
+      // Match sequences that end with ., ?, ! or end of string, keeping abbreviations intact poorly but better than naive split
+      const re = /[^.!?]+[.!?]+/g;
+      const matches = t.match(re);
+      if (matches && matches.length) {
+        return matches.map(s => s.trim());
+      }
+      // fallback: split by line breaks
+      return t.split('\\n').map(s=>s.trim()).filter(Boolean);
+    }
+
+    /* ------------------------
+       Chunk sentences into chunks of <= size characters,
+       but never split a sentence in the middle.
+       ------------------------ */
+    function chunkSentences(sentences, maxChars = 800) {
+      const chunks = [];
+      let current = '';
+      for (const s of sentences) {
+        if ((current + ' ' + s).trim().length <= maxChars) {
+          current = (current + ' ' + s).trim();
+        } else {
+          if (current) chunks.push(current);
+          // if single sentence is longer than maxChars, push it alone
+          if (s.length > maxChars) {
+            // break long sentence into sub-sentences at commas if possible
+            const parts = s.split(/,|;|:/).map(p=>p.trim()).filter(Boolean);
+            let temp = '';
+            for (const p of parts) {
+              if ((temp + ' ' + p).trim().length <= maxChars) {
+                temp = (temp + ' ' + p).trim();
+              } else {
+                if (temp) chunks.push(temp);
+                temp = p;
+              }
+            }
+            if (temp) chunks.push(temp);
+            current = '';
+          } else {
+            current = s;
+          }
+        }
+      }
+      if (current) chunks.push(current);
+      return chunks;
+    }
+
+    /* ------------------------
+       Score function: keyword overlap with basic weighting
+       ------------------------ */
+    function scoreChunk(query, chunk) {
+      const qWords = query.toLowerCase().match(/\\w+/g) || [];
+      const cWords = chunk.toLowerCase().match(/\\w+/g) || [];
+      if (!qWords.length || !cWords.length) return 0;
+      const cSet = new Set(cWords);
+      let score = 0;
+      for (const w of qWords) {
+        if (w.length < 3 || STOPWORDS.has(w)) continue;
+        if (cSet.has(w)) score += 1.5;
+        else {
+          // partial match allowance
+          for (const cw of cSet) {
+            if (cw.includes(w) || w.includes(cw)) { score += 0.2; break; }
+          }
+        }
+      }
+      // boost for chunk length (prefer informative chunks)
+      score *= Math.min(2, Math.log2(2 + cWords.length));
+      return score;
+    }
+
+    /* ------------------------
+       Retrieval: split combinedText -> sentences -> chunks -> score -> top K
+       ------------------------ */
+    function retrieveTopChunks(query, topK = 3) {
+      if (!combinedText) return [];
+      const sentences = splitIntoSentences(combinedText);
+      const chunks = chunkSentences(sentences, 900);
+      const scored = chunks.map(c => ({ c, s: scoreChunk(query, c) }))
+                           .filter(x => x.s > 0)
+                           .sort((a,b) => b.s - a.s);
+      // if no scored chunks, fall back to naive fuzzy by query presence
+      if (scored.length === 0) {
+        const fallback = chunks.filter(ch => ch.toLowerCase().includes(query.toLowerCase().split(/\W+/)[0] || ''));
+        return fallback.slice(0, topK);
+      }
+      return scored.slice(0, topK).map(x => x.c);
+    }
+
+    /* ------------------------
+       Compose final answer: ensure sentences are complete and end with punctuation
+       ------------------------ */
+    function ensureEndsWithPunctuation(s) {
+      s = s.trim();
+      if (!s) return s;
+      if (/[.!?]"?$/.test(s)) return s;
+      return s + '.';
+    }
+
+    function generateAnswerFromDocs(question) {
+      if (!question || !question.trim()) return "Please type a question.";
+      const top = retrieveTopChunks(question, 4);
+      if (!top || top.length === 0) {
+        // polite mode-specific fallback
+        if (currentMode === 'student') return "I couldn't find a direct answer in your uploaded documents. Try rephrasing or uploading more material.";
+        if (currentMode === 'business') return "No relevant content found in the provided documents. Please provide additional documents or refer to a specific section.";
+        return "No relevant information found. Please try another question.";
+      }
+      let preface = currentMode === 'student' ? "Simple explanation:\n\n" :
+                    currentMode === 'business' ? "Technical explanation:\n\n" : "Summary:\n\n";
+      // Ensure each chunk ends with punctuation and is a full sentence block
+      const cleaned = top.map(t => {
+        const sentences = splitIntoSentences(t);
+        // join sentences ensuring punctuation
+        return sentences.map(s => ensureEndsWithPunctuation(s)).join(' ');
+      });
+      return preface + cleaned.join("\n\n---\n\n");
+    }
+
+    /* ------------------------
+       PDF extraction using pdf.js (all pages)
+       ------------------------ */
+    async function extractTextFromPdfFile(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      try {
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          const strs = content.items.map(it => it.str).join(' ');
+          // append with a separator indicating page
+          fullText += `\n\n[Page ${i}]\n` + strs + '\n';
+        }
+        return fullText;
+      } catch (err) {
+        console.error('pdf extraction error', err);
+        throw err;
+      }
+    }
+
+    /* ------------------------
+       UI wiring: upload area, browse button
+       ------------------------ */
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', (e) => { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', async (e) => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) await handleUploadedFile(f);
+    });
+
+    browseBtn.addEventListener('click', () => hiddenFile.click());
+    hiddenFile.addEventListener('change', async (e) => {
+      if (e.target.files && e.target.files[0]) await handleUploadedFile(e.target.files[0]);
+      hiddenFile.value = '';
+    });
+
+    async function handleUploadedFile(file) {
+      if (!file || !file.type || !file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Please upload a PDF file.');
+        return;
+      }
+      try {
+        appendChatToBox(`Uploading ${file.name}...`, 'ai');
+        const text = await extractTextFromPdfFile(file);
+        docs.push({ name: file.name, text });
+        combinedText = docs.map(d => `-- ${d.name} --\n` + d.text).join('\n\n');
+        // save to localStorage for persistence
+        localStorage.setItem('studymate_docs', JSON.stringify(docs));
+        appendChatToBox(`Uploaded: ${file.name}`, 'ai');
+        alert(`${file.name} uploaded and processed.`);
+      } catch (err) {
+        alert('Failed to extract PDF: ' + (err.message || err));
+      }
+    }
+
+    // restore docs if saved
+    (function restoreDocs() {
+      try {
+        const raw = localStorage.getItem('studymate_docs');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length) {
+            docs = parsed;
+            combinedText = docs.map(d => `-- ${d.name} --\n` + d.text).join('\n\n');
+            appendChatToBox(`Restored ${docs.length} document(s) from your browser.`, 'ai');
+          }
+        }
+        const savedAnswer = localStorage.getItem('studymate_answer');
+        if (savedAnswer) answerText.innerHTML = savedAnswer;
+      } catch (e) { /* ignore */ }
+    })();
+
+    /* ------------------------
+       Chat handling: user asks in chat or main Ask button
+       ------------------------ */
+    const sendMessageBtn = document.getElementById('sendMessageBtn');
+    const userInput = document.getElementById('userInput');
+
+    sendMessageBtn.addEventListener('click', sendChatQuestion);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatQuestion(); });
+
+    function sendChatQuestion() {
+      const q = userInput.value.trim();
+      if (!q) return;
+      appendChatToBox(q, 'user');
+      userInput.value = '';
+      // show "thinking"
+      appendChatToBox('Searching your documents...', 'ai');
+      setTimeout(() => {
+        // remove last 'searching' message (it's always an ai message)
+        const msgs = chatBox.querySelectorAll('.message.ai-message');
+        if (msgs && msgs.length) {
+          // remove the last ai searching (we appended it)
+          msgs[msgs.length - 1].remove();
+        }
+        const ans = generateAnswerFromDocs(q);
+        appendChatToBox(ans, 'ai');
+        // update main answer area (complete sentences guaranteed by chunk strategy)
+        answerText.innerText = ans;
+        // save answer
+        localStorage.setItem('studymate_answer', ans);
+        // voice
+        speakText(ans);
+      }, 650);
+    }
+
+    function appendChatToBox(text, who='ai') {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'message ' + (who === 'user' ? 'user-message' : 'ai-message');
+      const b = document.createElement('b');
+      b.textContent = who === 'user' ? 'You' : 'Study Assistant';
+      const c = document.createElement('div');
+      c.style.marginTop = '6px';
+      c.style.whiteSpace = 'pre-wrap';
+      c.textContent = text;
+      wrapper.appendChild(b);
+      wrapper.appendChild(c);
+      chatBox.appendChild(wrapper);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    /* Also connect Ask from center's UI (save button used as example "Ask" not present, so hook into Save Edits click for saving only) */
+    // The original UI had no central Ask button; the chat is the input. We'll wire quick actions below.
+
+    /* ------------------------
+       Save edits, copy, downloads
+       ------------------------ */
+    document.getElementById('saveEdits').addEventListener('click', () => {
+      const html = answerText.innerHTML;
+      localStorage.setItem('studymate_answer', html);
+      alert('Answer saved locally.');
+    });
+
+    document.getElementById('copyBtn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(answerText.innerText);
+        alert('Answer copied to clipboard.');
+      } catch (e) {
+        alert('Copy failed: ' + e.message);
+      }
+    });
+
+    // PDF download using jsPDF
+    document.getElementById('downloadPdf').addEventListener('click', () => {
+      const txt = answerText.innerText || '';
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const margin = 40;
+      const maxLineWidth = doc.internal.pageSize.getWidth() - margin * 2;
+      doc.setFontSize(12);
+      const lines = doc.splitTextToSize(txt, maxLineWidth);
+      let cursor = 40;
+      lines.forEach((line, idx) => {
+        if (cursor + 14 > doc.internal.pageSize.getHeight() - 40) {
+          doc.addPage();
+          cursor = 40;
+        }
+        doc.text(line, margin, cursor);
+        cursor += 14;
+      });
+      doc.save('answer.pdf');
+    });
+
+    // Word (simple HTML -> .doc)
+    document.getElementById('downloadWord').addEventListener('click', () => {
+      const html = '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + answerText.innerHTML + '</body></html>';
+      const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'answer.doc';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Text file
+    document.getElementById('downloadText').addEventListener('click', () => {
+      const txt = answerText.innerText || '';
+      const blob = new Blob([txt], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'answer.txt';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    /* ------------------------
+       Voiceover (Web Speech API)
+       ------------------------ */
+    let speaking = false;
+    const voiceBtn = document.getElementById('voiceoverBtn');
+    voiceBtn.addEventListener('click', () => {
+      const txt = answerText.innerText || '';
+      if (!txt) return alert('No answer to speak.');
+      if (speaking) { speechSynthesis.cancel(); speaking = false; voiceBtn.innerText = 'Voiceover'; return; }
+      speakText(txt);
+      voiceBtn.innerText = 'Stop';
+    });
+
+    function speakText(text) {
+      try {
+        speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'en-US';
+        utter.rate = 1;
+        speechSynthesis.speak(utter);
+        speaking = true;
+        utter.onend = () => { speaking = false; voiceBtn.innerText = 'Voiceover'; };
+      } catch (e) {
+        console.warn(e);
+        alert('Speech not available in this browser.');
+      }
+    }
+
+    /* ------------------------
+       Translation (LibreTranslate) — public instance
+       Note: public instance may be rate-limited or unavailable.
+       ------------------------ */
+    async function translateTextAPI(text, target) {
+      try {
+        const res = await fetch('https://libretranslate.de/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ q: text, source: 'en', target, format: 'text' })
+        });
+        if (!res.ok) throw new Error('Translate API error ' + res.status);
+        const j = await res.json();
+        return j.translatedText || text;
+      } catch (e) {
+        console.warn('translate failed', e);
+        return null;
+      }
+    }
+
+    document.getElementById('translateTelugu').addEventListener('click', async () => {
+      const orig = answerText.innerText || '';
+      if (!orig) return alert('No answer to translate.');
+      answerText.innerText = 'Translating to Telugu...';
+      const translated = await translateTextAPI(orig, 'te');
+      if (translated) answerText.innerText = translated;
+      else { answerText.innerText = '(Translation failed — showing original.)\\n\\n' + orig; alert('Translation failed or rate-limited; showing original text.'); }
+    });
+
+    document.getElementById('translateTamil').addEventListener('click', async () => {
+      const orig = answerText.innerText || '';
+      if (!orig) return alert('No answer to translate.');
+      answerText.innerText = 'Translating to Tamil...';
+      const translated = await translateTextAPI(orig, 'ta');
+      if (translated) answerText.innerText = translated;
+      else { answerText.innerText = '(Translation failed — showing original.)\\n\\n' + orig; alert('Translation failed or rate-limited; showing original text.'); }
+    });
+
+    /* ------------------------
+       Quick actions: Key Concepts, Exam Questions, Summary, Search Document
+       They use retrieval + basic formatting.
+       ------------------------ */
+    document.getElementById('keyConceptsBtn').addEventListener('click', () => {
+      if (!combinedText) return alert('Upload PDFs first.');
+      // strategy: retrieve top chunks for query "key concepts" and then extract short noun phrases naïvely
+      const top = retrieveTopChunks('key concepts', 4);
+      const combined = top.join(' ');
+      // attempt to pick phrases by splitting on commas and semicolons, pick first few short phrases
+      const candidates = combined.split(/[.,;:\\n]/).map(s => s.trim()).filter(Boolean).slice(0, 8);
+      const out = candidates.map((c, i) => `${i+1}. ${c}`).join('\\n\\n');
+      alert('Key Concepts:\\n\\n' + (out || 'No concepts found.'));
+    });
+
+    document.getElementById('examQuestionsBtn').addEventListener('click', () => {
+      if (!combinedText) return alert('Upload PDFs first.');
+      const top = retrieveTopChunks('important', 6);
+      const questions = top.slice(0,6).map((t,i) => `${i+1}. Explain: ${t.split('\\n')[0].slice(0,120)}...`);
+      alert('Potential Exam Questions:\\n\\n' + questions.join('\\n\\n'));
+    });
+
+    document.getElementById('summaryBtn').addEventListener('click', () => {
+      if (!combinedText) return alert('Upload PDFs first.');
+      const top = retrieveTopChunks('summary', 4);
+      const out = top.join('\\n\\n---\\n\\n');
+      answerText.innerText = 'Summary:\\n\\n' + out;
+      localStorage.setItem('studymate_answer', answerText.innerText);
+    });
+
+    document.getElementById('searchDocBtn').addEventListener('click', () => {
+      const term = prompt('Enter search term:');
+      if (!term) return;
+      if (!combinedText) return alert('Upload PDFs first.');
+      const sentences = splitIntoSentences(combinedText);
+      const found = sentences.filter(s => s.toLowerCase().includes(term.toLowerCase())).slice(0, 8);
+      if (!found.length) return alert('No matches found.');
+      // show first few matches
+      alert('Search Results:\\n\\n' + found.join('\\n\\n'));
+    });
+
+    /* ------------------------
+       Tools: Quiz & Flowchart (simple implementations)
+       ------------------------ */
+    function openModal(title, htmlBody) {
+      // create overlay
+      const overlay = document.createElement('div');
+      overlay.style.position = 'fixed';
+      overlay.style.inset = '0';
+      overlay.style.background = 'rgba(0,0,0,0.6)';
+      overlay.style.display = 'flex';
+      overlay.style.alignItems = 'center';
+      overlay.style.justifyContent = 'center';
+      overlay.style.zIndex = 9999;
+      const card = document.createElement('div');
+      card.style.background = 'white';
+      card.style.color = '#111';
+      card.style.borderRadius = '10px';
+      card.style.padding = '16px';
+      card.style.maxWidth = '900px';
+      card.style.width = '90%';
+      card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><strong>${title}</strong><button id="closeModalBtn" style="padding:6px 10px;border-radius:6px;cursor:pointer">Close</button></div><div id="modalBody">${htmlBody}</div>`;
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+      document.getElementById('closeModalBtn').addEventListener('click', () => overlay.remove());
+      return overlay;
+    }
+
+    document.getElementById('quizBtn').addEventListener('click', () => {
+      if (!combinedText) return alert('Upload PDFs first to generate quiz.');
+      const sentences = splitIntoSentences(combinedText).slice(0, 20);
+      if (!sentences.length) return alert('No content to make quiz from.');
+      let html = '<ol>';
+      sentences.slice(0,6).forEach((s, idx) => {
+        const words = s.split(/\s+/).filter(w => w.length > 4);
+        const answer = words.length ? words[Math.floor(Math.random() * words.length)] : '(answer)';
+        const question = s.replace(answer, '_____');
+        html += `<li style="margin-bottom:10px"><div style="margin-bottom:6px">${question}</div><button class="revealBtn" data-ans="${answer}" style="padding:6px 10px;border-radius:6px;cursor:pointer">Show Answer</button></li>`;
+      });
+      html += '</ol>';
+      const modal = openModal('Auto-generated Quiz', html);
+      modal.querySelectorAll('.revealBtn').forEach(btn => {
+        btn.addEventListener('click', (e) => alert('Answer: ' + e.target.dataset.ans));
+      });
+    });
+
+    document.getElementById('flowBtn').addEventListener('click', () => {
+      const body = `<div style="display:flex;gap:10px"><textarea id="flowInput" placeholder="Write steps, one per line" style="flex:1;height:140px;padding:8px"></textarea><div style="display:flex;flex-direction:column;gap:8px"><button id="makeFlow" style="padding:8px 12px">Generate</button><button id="closeFlow" style="padding:8px 12px">Close</button></div></div><div id="flowOut" style="margin-top:12px;background:#f7f7f7;padding:10px;border-radius:6px"></div>`;
+      const modal = openModal('Flowchart Generator', body);
+      modal.querySelector('#makeFlow').addEventListener('click', () => {
+        const val = modal.querySelector('#flowInput').value.trim();
+        if (!val) return alert('Add steps');
+        const lines = val.split('\\n').map(l => l.trim()).filter(Boolean);
+        let mer = 'flowchart TD\\n';
+        lines.forEach((l,i) => {
+          mer += `A${i}["${l}"]` + (i < lines.length - 1 ? ` --> A${i+1}\\n` : '\\n');
+        });
+        // render mermaid
+        const out = modal.querySelector('#flowOut');
+        out.innerHTML = `<div class="mermaid">${mer}</div>`;
+        // load mermaid dynamically
+        if (!window.mermaid) {
+          const s = document.createElement('script');
+          s.src = 'https://unpkg.com/mermaid@10.4.0/dist/mermaid.min.js';
+          s.onload = () => { mermaid.initialize({ startOnLoad: true, theme: 'base' }); mermaid.contentLoaded(); };
+          document.body.appendChild(s);
+        } else {
+          mermaid.initialize({ startOnLoad: true, theme: 'base' });
+          mermaid.contentLoaded();
+        }
+      });
+      modal.querySelector('#closeFlow').addEventListener('click', () => modal.remove());
+    });
+
+    /* ------------------------
+       Misc: flashcards/exam/notes stubs
+       ------------------------ */
+    document.getElementById('flashBtn').addEventListener('click', () => alert('Flashcards: will be generated from doc content — coming soon.'));
+    document.getElementById('examBtn').addEventListener('click', () => alert('Exam scheduler: coming soon.'));
+    document.getElementById('notesBtn').addEventListener('click', () => alert('Notes: coming soon.'));
+    document.getElementById('mindBtn').addEventListener('click', () => alert('Mind maps: coming soon.'));
+
+    /* ------------------------
+       Category selector behavior (keep UI intact)
+       ------------------------ */
+    document.querySelectorAll('.category-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const txt = btn.innerText.trim().toLowerCase();
+        if (txt.includes('student')) currentMode = 'student';
+        else if (txt.includes('business')) currentMode = 'business';
+        else currentMode = 'other';
+        appendChatToBox('Mode set to ' + currentMode, 'ai');
+      });
+    });
+
+    /* ------------------------
+       Import buttons (open prompts)
+       ------------------------ */
+    document.getElementById('importUrl').addEventListener('click', async () => {
+      const url = prompt('Enter direct PDF URL (must allow CORS):');
+      if (!url) return;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Fetch failed ' + res.status);
+        const blob = await res.blob();
+        const file = new File([blob], (new URL(url)).pathname.split('/').pop() || 'import.pdf', { type: blob.type });
+        await handleUploadedFile(file);
+      } catch (e) {
+        alert('Import failed (CORS or network): ' + e.message);
+      }
+    });
+
+    document.getElementById('importGit').addEventListener('click', () => {
+      alert('To import from GitHub: provide a raw.githubusercontent.com link via Import URL button.');
+    });
+    document.getElementById('importGoogle').addEventListener('click', () => {
+      alert('To import from Google Drive: create a shareable link and use Import URL. Drive may block CORS.');
+    });
+    document.getElementById('importOne').addEventListener('click', () => {
+      alert('To import from OneDrive: get a direct download link and use Import URL. CORS may apply.');
+    });
+
+    /* ------------------------
+       Keep answer edits persistent on blur
+       ------------------------ */
+    answerText.addEventListener('blur', () => {
+      localStorage.setItem('studymate_answer', answerText.innerHTML);
+    });
+
+    /* ------------------------
+       Ensure the "initial" static content is not modified visually:
+       - we do not change your HTML layout or styles
+       ------------------------ */
+
+    // final helper: if user asks in static question area (not designed to be interactive),
+    // make the content selectable and copyable — no changes made.
+
+    </script>
+</body>
+</html>
